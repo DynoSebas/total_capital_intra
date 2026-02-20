@@ -2,7 +2,8 @@
 .env
 .streamlit/secrets.toml
 config/credentials.yaml
-
+venv/
+.venv/
 # Python
 __pycache__/
 *.py[cod]
