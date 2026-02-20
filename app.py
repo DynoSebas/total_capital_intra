@@ -3,7 +3,7 @@
 import streamlit as st
 
 from config.theme import CUSTOM_CSS
-from config.auth import load_credentials, get_user_department
+from config.auth import load_credentials, get_user_department, register_user
 from modules.admin import admin_ui
 
 st.set_page_config(
@@ -47,6 +47,36 @@ try:
             st.error("Usuario o contraseña incorrectos.")
         else:
             st.warning("Por favor ingresa tu usuario y contraseña.")
+
+        st.markdown("---")
+        with st.expander("¿No tienes cuenta? Regístrate", expanded=False):
+            with st.form("form_register", clear_on_submit=True):
+                st.subheader("Nuevo usuario")
+                reg_username = st.text_input("Usuario", key="reg_username", placeholder="ej: mi_usuario")
+                reg_password = st.text_input("Contraseña", type="password", key="reg_password", placeholder="Elige una contraseña")
+                reg_name = st.text_input("Nombre (opcional)", key="reg_name", placeholder="Tu nombre")
+                reg_department = st.selectbox(
+                    "Departamento",
+                    options=["General", "Administración", "RRHH", "Ventas"],
+                    key="reg_department",
+                )
+                submitted = st.form_submit_button("Registrarme")
+                if submitted:
+                    if reg_username and reg_password:
+                        ok, msg = register_user(
+                            username=reg_username,
+                            password=reg_password,
+                            name=reg_name or reg_username,
+                            department=reg_department,
+                        )
+                        if ok:
+                            st.success(msg)
+                            st.info("Recarga la página e inicia sesión con tu nuevo usuario.")
+                        else:
+                            st.error(msg)
+                    else:
+                        st.error("Usuario y contraseña son obligatorios.")
+
         st.stop()
 
     # Usuario autenticado
