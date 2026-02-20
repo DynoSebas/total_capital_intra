@@ -1,0 +1,94 @@
+"""Punto de entrada principal - Intranet Total Capital."""
+
+import streamlit as st
+
+from config.theme import CUSTOM_CSS
+from config.auth import load_credentials, get_user_department
+from modules.admin import admin_ui
+
+st.set_page_config(
+    page_title="Total Capital Intranet",
+    page_icon="🏢",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Inyectar CSS personalizado
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+# Cargar credenciales y autenticar
+config = load_credentials()
+if not config:
+    st.error(
+        "No se encontró credentials.yaml. "
+        "Copia config/credentials.yaml.example a config/credentials.yaml y configura los usuarios."
+    )
+    st.stop()
+
+try:
+    import streamlit_authenticator as stauth
+
+    authenticator = stauth.Authenticate(
+        config["credentials"],
+        config["cookie"]["name"],
+        config["cookie"]["key"],
+        config["cookie"]["expiry_days"],
+    )
+
+    authenticator.login("main", key="Iniciar sesión")
+
+    # login() retorna None cuando location='main'; los valores están en session_state
+    name = st.session_state.get("name")
+    authentication_status = st.session_state.get("authentication_status")
+    username = st.session_state.get("username")
+
+    if authentication_status is None or authentication_status is False:
+        if authentication_status is False:
+            st.error("Usuario o contraseña incorrectos.")
+        else:
+            st.warning("Por favor ingresa tu usuario y contraseña.")
+        st.stop()
+
+    # Usuario autenticado
+    authenticator.logout("Cerrar sesión", "sidebar")
+
+    # Barra lateral - Navegación por departamentos
+    st.sidebar.title("Total Capital")
+    st.sidebar.markdown(f"**Hola, {name}**")
+    st.sidebar.markdown("---")
+
+    user_dept = get_user_department(username)
+    all_depts = ["Administración", "RRHH", "Ventas"]
+    # Si el usuario tiene departamento asignado, filtrar opciones (o mostrar solo el suyo)
+    dept_options = [user_dept] if user_dept else all_depts
+    default_idx = 0
+    if user_dept:
+        default_idx = all_depts.index(user_dept) if user_dept in all_depts else 0
+        dept_options = all_depts  # Permitir ver todos los departamentos
+
+    departamento = st.sidebar.selectbox(
+        "Departamento",
+        options=all_depts,
+        index=default_idx,
+        help="Selecciona el departamento para acceder a sus herramientas.",
+    )
+
+    st.sidebar.markdown("---")
+    st.sidebar.caption("Intranet de Automatización v1.0")
+
+    # Enrutamiento según departamento seleccionado
+    MODULES = {
+        "Administración": admin_ui.render,
+        "RRHH": lambda: st.info("Módulo RRHH - Próximamente."),
+        "Ventas": lambda: st.info("Módulo Ventas - Próximamente."),
+    }
+
+    render_fn = MODULES.get(departamento)
+    if render_fn:
+        render_fn()
+    else:
+        st.warning("Selecciona un departamento en la barra lateral.")
+
+except Exception as e:
+    st.error(f"Error al cargar autenticación: {e}")
+    st.info("Verifica que config/credentials.yaml existe y tiene el formato correcto.")
