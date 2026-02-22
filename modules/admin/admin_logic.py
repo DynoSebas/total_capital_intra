@@ -15,7 +15,7 @@ def process_ve_por_mas(df: pd.DataFrame) -> pd.DataFrame:
     - Output: FECHA, CONCEPTO (extraído de DESCRIPCIÓN, solo lo que está después de "CONCEPTO:")
     """
     if df.empty:
-        return pd.DataFrame(columns=["FECHA", "CONCEPTO"])
+        return pd.DataFrame(columns=["FECHA", "CONCEPTO", "MONTO"])
 
     # Detectar columna FECHA (mismo nombre en el CSV)
     fecha_col = None
@@ -34,6 +34,18 @@ def process_ve_por_mas(df: pd.DataFrame) -> pd.DataFrame:
             break
     if desc_col is None:
         raise ValueError("No se encontró la columna DESCRIPCIÓN en el CSV.")
+
+    #detectar las columnas de retiros y depositos    
+    retiros_col = None
+    deposito_col = None
+    for col in df.columns:
+        col_lowe = str(col).lower()
+        if "retiros" in col_lowe:
+            retiros_col = col
+        if "depósitos" in col_lowe:
+            deposito_col = col
+    if retiros_col is None or deposito_col is None:  #validación en caso de que no se encuentren las columnas 
+        raise ValueError("No se encontraron las columnas RETIROS o DEPOSITOS en el CSV.")
 
     # Extraer CONCEPTO: texto después de "CONCEPTO:" hasta el siguiente " PALABRA:" o " PALABRA PALABRA:"
     # Ej: "CONCEPTO: IMPACTA REFERENCIA: 1 BENEFICIARIO: ..." -> solo "IMPACTA"
@@ -54,6 +66,23 @@ def process_ve_por_mas(df: pd.DataFrame) -> pd.DataFrame:
     result = pd.DataFrame()
     result["FECHA"] = df[fecha_col]
     result["CONCEPTO"] = df[desc_col].apply(extract_concepto)
+    
+
+    #funcion para obtner el monto de la transacción
+    def obtener_monto_transaccion(row): 
+        #Obtener valores de las columnas de retiros y depositos
+        retiro = row[retiros_col]       
+        deposito = row[deposito_col]
+        
+        #devolver el valor de la columna retiro o deposito 
+        if pd.notna(retiro) and str(retiro).strip() != "":
+            return retiro
+        if pd.notna(deposito) and str(deposito).strip() != "":
+            return deposito
+            
+        return pd.NA
+
+    result["MONTO"] = df.apply(obtener_monto_transaccion, axis=1)
 
     # Quitar filas vacías
     result = result.dropna(subset=["FECHA"], how="all")
