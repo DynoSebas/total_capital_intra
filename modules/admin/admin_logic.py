@@ -7,6 +7,23 @@ import pandas as pd
 BANCO_VE_POR_MAS = "ve_por_mas"
 BANCO_VE_POR_MAS_HEADER_ROW = 9  # Los nombres de columnas están en la línea 10 (índice 9)
 
+#diccionario con id y tags
+tags = {
+    "00000368682":"DGE USD",
+    "00000712825":"DGE MXN",
+    "00000469012":"BSI USD",
+    "00000712804":"BSI MXN",
+    "00000391197":"DGP USD",
+    "00000712791":"DGP MXN",
+    "00000642340":"SVC USD",
+    "00000712833":"SVC MXN",
+    "25600585353":"BSI MXN SC",
+    "25601044520":"BSI MXN SC 2",
+    "95600019492":"BSI USD SC",
+    "95600993391":"BSI USD SC 2",
+    "0124988817" : "DGP BBVA"
+
+}
 
 def process_ve_por_mas(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -58,7 +75,23 @@ def process_ve_por_mas(df: pd.DataFrame) -> pd.DataFrame:
         text = str(text).strip()
         idx = text.upper().find("CONCEPTO:")
         if idx < 0:
-            return text
+            #si no encontro concepto busca traspaso o recepcion
+            idx_traspaso = text.upper().find("TRASPASO")
+            idx_recepcion = text.upper().find("RECEPCION")
+
+            if idx_traspaso >= 0 or idx_recepcion >= 0:  
+                #si alguna de las dos existe buscamos recepcion primero por que en las 
+                #de recepcion tambien se encuentra la palabra traspaso
+                if idx_recepcion >= 0: 
+                    operacion = "RECEPCION"
+                else:
+                    operacion = "TRASPASO"
+
+                parts = text.split()  
+                id_banco = parts[-1]
+
+                tag_final = tags.get(id_banco, id_banco)
+                return f"{operacion} {tag_final}"  #regresamos la operacion con el tag 
         after = text[idx + 9 :].strip()  # después de "CONCEPTO:"
         parts = _FIELD_PATTERN.split(after)
         return parts[0].strip() if parts else after
