@@ -73,28 +73,45 @@ def process_ve_por_mas(df: pd.DataFrame) -> pd.DataFrame:
         if pd.isna(text):
             return ""
         text = str(text).strip()
-        idx = text.upper().find("CONCEPTO:")
-        if idx < 0:
-            #si no encontro concepto busca traspaso o recepcion
-            idx_traspaso = text.upper().find("TRASPASO")
-            idx_recepcion = text.upper().find("RECEPCION")
+        idx = text.upper().find("CONCEPTO:") #buscamos la palabra concepto
 
-            if idx_traspaso >= 0 or idx_recepcion >= 0:  
-                #si alguna de las dos existe buscamos recepcion primero por que en las 
-                #de recepcion tambien se encuentra la palabra traspaso
-                if idx_recepcion >= 0: 
-                    operacion = "RECEPCION"
-                else:
-                    operacion = "TRASPASO"
+        if idx >= 0:  #si encontro "CONCEPTO:"
+            after = text[idx + 9 :].strip()
+            parts = _FIELD_PATTERN.split(after)
+            clean_text = parts[0].strip() if parts else after
+            
+            palabras = clean_text.split()
+            if palabras:
+                ultimo_pedazo = palabras[-1]  #como el id siempre esta al final lo sacamos y lo guardamos para buscarlo en diccionario
+                
+                #verificamops si la ultima palabra es un id dentro del diccionario
+                if ultimo_pedazo in tags:
+                    tag_correspondiente = tags[ultimo_pedazo]
+                    texto_sin_codigo = clean_text.replace("CODIGO", "").replace("CLIENTE", "") #borramos "CODIGO" y "CLIENTE"
+                    texto_final = texto_sin_codigo.replace(ultimo_pedazo, tag_correspondiente)
+                    return " ".join(texto_final.split())
+        
+            return clean_text
 
-                parts = text.split()  
-                id_banco = parts[-1]
+        #se busca sobre el texto, tenga o no "CONCEPTO"
+        #si no encontro concepto busca traspaso o recepcion
+        idx_traspaso = text.upper().find("TRASPASO")
+        idx_recepcion = text.upper().find("RECEPCION")
 
-                tag_final = tags.get(id_banco, id_banco)
-                return f"{operacion} {tag_final}"  #regresamos la operacion con el tag 
-        after = text[idx + 9 :].strip()  # después de "CONCEPTO:"
-        parts = _FIELD_PATTERN.split(after)
-        return parts[0].strip() if parts else after
+        if idx_traspaso >= 0 or idx_recepcion >= 0:  
+            #si alguna de las dos existe buscamos recepcion primero por que en las 
+            #de recepcion tambien se encuentra la palabra traspaso
+            if idx_recepcion >= 0: 
+                operacion = "RECEPCION"
+            else:
+                operacion = "TRASPASO"
+
+            parts = text.split()  
+            id_banco = parts[-1]
+
+            tag_final = tags.get(id_banco, id_banco)
+            return f"{operacion} {tag_final}"  #regresamos la operacion con el tag 
+        return text
 
     result = pd.DataFrame()
     result["FECHA"] = df[fecha_col]
