@@ -1,12 +1,54 @@
 """Carga credenciales y configura el autenticador."""
 
-import os
 from pathlib import Path
 
 import yaml
 
 CREDENTIALS_PATH = Path(__file__).parent / "credentials.yaml"
 CREDENTIALS_EXAMPLE = Path(__file__).parent / "credentials.yaml.example"
+
+
+def _default_credentials_config() -> dict:
+    """Retorna una estructura minima valida para streamlit-authenticator."""
+    return {
+        "credentials": {"usernames": {}},
+        "cookie": {
+            "name": "total_capital_cookie",
+            "key": "cambia_esta_clave_en_produccion",
+            "expiry_days": 30,
+        },
+        "preauthorized": {"emails": []},
+    }
+
+
+def _ensure_credentials_file() -> tuple[bool, str]:
+    """
+    Garantiza que exista credentials.yaml para poder guardar nuevos usuarios.
+    Si no existe, lo inicializa desde credentials.yaml.example o crea uno minimo.
+    """
+    if CREDENTIALS_PATH.exists():
+        return True, ""
+
+    try:
+        if CREDENTIALS_EXAMPLE.exists():
+            with open(CREDENTIALS_EXAMPLE, "r", encoding="utf-8") as src:
+                config = yaml.safe_load(src) or {}
+
+            if not isinstance(config, dict):
+                config = _default_credentials_config()
+            else:
+                config.setdefault("credentials", {}).setdefault("usernames", {})
+                config.setdefault("cookie", _default_credentials_config()["cookie"])
+                config.setdefault("preauthorized", {"emails": []})
+        else:
+            config = _default_credentials_config()
+
+        with open(CREDENTIALS_PATH, "w", encoding="utf-8") as dst:
+            yaml.dump(config, dst, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    except Exception as e:
+        return False, f"No se pudo inicializar config/credentials.yaml: {e}"
+
+    return True, ""
 
 
 def load_credentials():
@@ -35,8 +77,9 @@ def register_user(
     if not (password or "").strip():
         return False, "La contraseña no puede estar vacía."
 
-    if not CREDENTIALS_PATH.exists():
-        return False, "No existe config/credentials.yaml. Cópialo desde credentials.yaml.example primero."
+    ok, err = _ensure_credentials_file()
+    if not ok:
+        return False, err
 
     try:
         import streamlit_authenticator as stauth
@@ -44,7 +87,10 @@ def register_user(
         return False, "Falta instalar streamlit-authenticator."
 
     with open(CREDENTIALS_PATH, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.safe_load(f) or {}
+
+    if not isinstance(config, dict):
+        config = _default_credentials_config()
 
     usernames = config.get("credentials", {}).get("usernames", {})
     if username in usernames:
