@@ -1,8 +1,11 @@
 """Punto de entrada principal - Intranet Total Capital."""
 
+import base64
+from pathlib import Path
+
 import streamlit as st
 
-from config.theme import CUSTOM_CSS
+from config.theme import CUSTOM_CSS, LOGIN_PAGE_CSS
 from config.auth import load_credentials, get_user_department, register_user
 from modules.admin import admin_ui
 
@@ -35,54 +38,85 @@ try:
         config["cookie"]["expiry_days"],
     )
 
-    authenticator.login("main", key="Iniciar sesión")
-
-    # login() retorna None cuando location='main'; los valores están en session_state
     name = st.session_state.get("name")
     authentication_status = st.session_state.get("authentication_status")
     username = st.session_state.get("username")
 
     if authentication_status is None or authentication_status is False:
-        if authentication_status is False:
-            st.error("Usuario o contraseña incorrectos.")
-        else:
-            st.warning("Por favor ingresa tu usuario y contraseña.")
+        st.markdown(LOGIN_PAGE_CSS, unsafe_allow_html=True)
+        st.markdown('<div class="login-page">', unsafe_allow_html=True)
 
-        st.markdown("---")
-        with st.expander("¿No tienes cuenta? Regístrate", expanded=False):
-            with st.form("form_register", clear_on_submit=True):
-                st.subheader("Nuevo usuario")
-                reg_username = st.text_input("Usuario", key="reg_username", placeholder="ej: mi_usuario")
-                reg_password = st.text_input("Contraseña", type="password", key="reg_password", placeholder="Elige una contraseña")
-                reg_name = st.text_input("Nombre (opcional)", key="reg_name", placeholder="Tu nombre")
-                reg_department = st.selectbox(
-                    "Departamento",
-                    options=["General", "Administración", "RRHH", "Ventas"],
-                    key="reg_department",
-                )
-                submitted = st.form_submit_button("Registrarme")
-                if submitted:
-                    if reg_username and reg_password:
-                        ok, msg = register_user(
-                            username=reg_username,
-                            password=reg_password,
-                            name=reg_name or reg_username,
-                            department=reg_department,
-                        )
-                        if ok:
-                            st.success(msg)
-                            st.info("Recarga la página e inicia sesión con tu nuevo usuario.")
+        logo_path = Path(__file__).parent / "assets" / "logo.png"
+        col_left, col_right = st.columns([1, 1])
+
+        with col_left:
+            st.subheader("Iniciar sesión")
+            authenticator.login("main", key="Iniciar sesión")
+            # Si la cookie restauró la sesión, forzar rerun para mostrar la app
+            if st.session_state.get("authentication_status") is True:
+                st.rerun()
+            if authentication_status is False:
+                st.error("Usuario o contraseña incorrectos.")
+            elif authentication_status is None:
+                st.warning("Por favor ingresa tu usuario y contraseña.")
+            st.markdown("---")
+            with st.expander("¿No tienes cuenta? Regístrate", expanded=False):
+                with st.form("form_register", clear_on_submit=True):
+                    st.subheader("Nuevo usuario")
+                    reg_username = st.text_input("Usuario", key="reg_username", placeholder="ej: mi_usuario")
+                    reg_password = st.text_input("Contraseña", type="password", key="reg_password", placeholder="Elige una contraseña")
+                    reg_name = st.text_input("Nombre (opcional)", key="reg_name", placeholder="Tu nombre")
+                    reg_department = st.selectbox(
+                        "Departamento",
+                        options=["General", "Administración", "RRHH", "Ventas"],
+                        key="reg_department",
+                    )
+                    submitted = st.form_submit_button("Registrarme")
+                    if submitted:
+                        if reg_username and reg_password:
+                            ok, msg = register_user(
+                                username=reg_username,
+                                password=reg_password,
+                                name=reg_name or reg_username,
+                                department=reg_department,
+                            )
+                            if ok:
+                                st.success(msg)
+                                st.info("Recarga la página e inicia sesión con tu nuevo usuario.")
+                            else:
+                                st.error(msg)
                         else:
-                            st.error(msg)
-                    else:
-                        st.error("Usuario y contraseña son obligatorios.")
+                            st.error("Usuario y contraseña son obligatorios.")
 
+        with col_right:
+            # Contenedor único: logo + texto para poder moverlo y estilizarlo fácil
+            logo_b64 = ""
+            if logo_path.exists():
+                with open(logo_path, "rb") as f:
+                    logo_b64 = base64.b64encode(f.read()).decode("utf-8")
+            st.markdown(
+                '<div class="login-branding-box">'
+                + (
+                    f'<img src="data:image/png;base64,{logo_b64}" alt="Total Capital" class="login-branding-logo"/>'
+                    if logo_b64
+                    else ""
+                )
+                + '<h3 class="login-branding-title">Bienvenido a Total Capital</h3>'
+                + '<p class="login-branding-subtitle">Intranet de automatización y herramientas internas.</p>'
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("</div>", unsafe_allow_html=True)
         st.stop()
 
     # Usuario autenticado
+    # Barra lateral - Logo arriba del botón de cerrar sesión
+    logo_path = Path(__file__).parent / "assets" / "logo.png"
+    if logo_path.exists():
+        st.sidebar.image(str(logo_path), width=140)
     authenticator.logout("Cerrar sesión", "sidebar")
-
-    # Barra lateral - Navegación por departamentos
+    st.sidebar.markdown("---")
     st.sidebar.title("Total Capital")
     st.sidebar.markdown(f"**Hola, {name}**")
     st.sidebar.markdown("---")
