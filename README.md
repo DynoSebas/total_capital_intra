@@ -56,6 +56,7 @@ La aplicación se abrirá en `http://localhost:8501`.
 
 ```
 ├── app.py                 # Punto de entrada
+├── assets/                 # Logo para la página de login (logo.png)
 ├── config/
 │   ├── theme.py           # Colores corporativos y CSS
 │   ├── auth.py            # Carga de credenciales
