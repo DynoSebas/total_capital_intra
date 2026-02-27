@@ -43,26 +43,37 @@ try:
     username = st.session_state.get("username")
 
     if authentication_status is None or authentication_status is False:
-        st.markdown(LOGIN_PAGE_CSS, unsafe_allow_html=True)
-        st.markdown('<div class="login-page">', unsafe_allow_html=True)
-
         logo_path = Path(__file__).parent / "assets" / "logo.png"
-        col_left, col_right = st.columns([1, 1])
 
-        with col_left:
-            st.subheader("Iniciar sesión")
-            authenticator.login("main", key="Iniciar sesión")
-            # Si la cookie restauró la sesión, forzar rerun para mostrar la app
-            if st.session_state.get("authentication_status") is True:
-                st.rerun()
-            if authentication_status is False:
-                st.error("Usuario o contraseña incorrectos.")
-            elif authentication_status is None:
-                st.warning("Por favor ingresa tu usuario y contraseña.")
-            st.markdown("---")
-            with st.expander("¿No tienes cuenta? Regístrate", expanded=False):
+        def _render_branding(logo_path):
+            logo_b64 = ""
+            if logo_path.exists():
+                with open(logo_path, "rb") as f:
+                    logo_b64 = base64.b64encode(f.read()).decode("utf-8")
+            st.markdown(
+                '<div class="login-branding-box">'
+                + (
+                    f'<img src="data:image/png;base64,{logo_b64}" alt="Total Capital" class="login-branding-logo"/>'
+                    if logo_b64
+                    else ""
+                )
+                + '<h3 class="login-branding-title">Bienvenido a Total Capital</h3>'
+                + '<p class="login-branding-subtitle">Intranet de automatización y herramientas internas.</p>'
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+        if st.query_params.get("page") == "register":
+            st.markdown(LOGIN_PAGE_CSS, unsafe_allow_html=True)
+            st.markdown('<div class="login-page">', unsafe_allow_html=True)
+            col_left, col_right = st.columns([1, 1])
+            with col_left:
+                st.subheader("Crear cuenta")
+                st.markdown(
+                    '<p class="login-register-prompt">¿Ya tienes cuenta? <a href="?">Inicia sesión</a></p>',
+                    unsafe_allow_html=True,
+                )
                 with st.form("form_register", clear_on_submit=True):
-                    st.subheader("Nuevo usuario")
                     reg_username = st.text_input("Usuario", key="reg_username", placeholder="ej: mi_usuario")
                     reg_password = st.text_input("Contraseña", type="password", key="reg_password", placeholder="Elige una contraseña")
                     reg_name = st.text_input("Nombre (opcional)", key="reg_name", placeholder="Tu nombre")
@@ -82,31 +93,37 @@ try:
                             )
                             if ok:
                                 st.success(msg)
-                                st.info("Recarga la página e inicia sesión con tu nuevo usuario.")
+                                st.info("Redirigiendo al inicio de sesión…")
+                                st.query_params.clear()
+                                st.rerun()
                             else:
                                 st.error(msg)
                         else:
                             st.error("Usuario y contraseña son obligatorios.")
+            with col_right:
+                _render_branding(logo_path)
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.stop()
 
-        with col_right:
-            # Contenedor único: logo + texto para poder moverlo y estilizarlo fácil
-            logo_b64 = ""
-            if logo_path.exists():
-                with open(logo_path, "rb") as f:
-                    logo_b64 = base64.b64encode(f.read()).decode("utf-8")
+        st.markdown(LOGIN_PAGE_CSS, unsafe_allow_html=True)
+        st.markdown('<div class="login-page">', unsafe_allow_html=True)
+        col_left, col_right = st.columns([1, 1])
+        with col_left:
+            st.subheader("Iniciar sesión")
+            authenticator.login("main", key="Iniciar sesión")
+            if st.session_state.get("authentication_status") is True:
+                st.rerun()
+            if authentication_status is False:
+                st.error("Usuario o contraseña incorrectos.")
+            elif authentication_status is None:
+                st.warning("Por favor ingresa tu usuario y contraseña.")
+            st.markdown("---")
             st.markdown(
-                '<div class="login-branding-box">'
-                + (
-                    f'<img src="data:image/png;base64,{logo_b64}" alt="Total Capital" class="login-branding-logo"/>'
-                    if logo_b64
-                    else ""
-                )
-                + '<h3 class="login-branding-title">Bienvenido a Total Capital</h3>'
-                + '<p class="login-branding-subtitle">Intranet de automatización y herramientas internas.</p>'
-                + "</div>",
+                '<p class="login-register-prompt">¿No tienes cuenta? <a href="?page=register">Regístrate</a></p>',
                 unsafe_allow_html=True,
             )
-
+        with col_right:
+            _render_branding(logo_path)
         st.markdown("</div>", unsafe_allow_html=True)
         st.stop()
 

@@ -187,5 +187,17 @@ LOGIN_PAGE_CSS = """
         background-color: #003a40 !important;
         color: white !important;
     }
+
+    /* Enlace "¿No tienes cuenta? Regístrate" / "Inicia sesión" con Montserrat */
+    .login-register-prompt {
+        font-family: 'Montserrat', 'Poppins', sans-serif !important;
+        font-weight: 500 !important;
+        color: #003a40 !important;
+    }
+    .login-register-prompt a {
+        font-family: 'Montserrat', 'Poppins', sans-serif !important;
+        font-weight: 600 !important;
+        color: #003a40 !important;
+    }
 </style>
 """
